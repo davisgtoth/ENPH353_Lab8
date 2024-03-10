@@ -42,12 +42,13 @@ if __name__ == '__main__':
     qlearn = qlearn.QLearn(actions=range(env.action_space.n),
                            alpha=0.2, gamma=0.8, epsilon=0.9)
 
-    qlearn.loadQ("bestQvalues")
-    print("here")
+    # qlearn.loadQ("bestQvalues")
+    # print("here")
 
     initial_epsilon = qlearn.epsilon
 
     epsilon_discount = 0.99#0.9986
+    # epsilon_discount = 0.0
 
     start_time = time.time()
     total_episodes = 10000

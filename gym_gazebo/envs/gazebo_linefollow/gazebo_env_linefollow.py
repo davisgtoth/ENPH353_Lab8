@@ -31,7 +31,7 @@ class Gazebo_Linefollow_Env(gazebo_env.GazeboEnv):
         self.reset_proxy = rospy.ServiceProxy('/gazebo/reset_world',
                                               Empty)
 
-        self.action_space = spaces.Discrete(3)  # F,L,R
+        self.action_space = spaces.Discrete(5)  # F,L,R,HL,HR
         self.reward_range = (-np.inf, np.inf)
         self.episode_history = []
 
@@ -58,7 +58,8 @@ class Gazebo_Linefollow_Env(gazebo_env.GazeboEnv):
 
         # NUM_BINS = 3
         NUM_BINS = 10
-        state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        state = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
         done = False
 
         # TODO: Analyze the cv_image and compute the state array and
@@ -86,53 +87,71 @@ class Gazebo_Linefollow_Env(gazebo_env.GazeboEnv):
 
         # find the road
         height, width  = bin_frame.shape
-        buffer = 10
-        radius = 15
+        buffer1 = 15
+        buffer2 = 75
+        radius = 10
 
-        centreY = height - buffer - radius
+        centreY1 = height - buffer1
+        centreY2 = height - buffer2
 
-        leftIndex = -1
-        rightIndex = -1
+        leftIndex1 = -1
+        rightIndex1 = -1
+        leftIndex2 = -1
+        rightIndex2 = -1
 
         for i in range(width):
-            if bin_frame[centreY][i] == 0 and leftIndex == -1:
-                leftIndex = i
-            elif bin_frame[centreY][i] == 0 and leftIndex != -1:
-                rightIndex = i
+            if bin_frame[centreY1][i] == 0 and leftIndex1 == -1:
+                leftIndex1 = i
+            elif bin_frame[centreY1][i] == 0 and leftIndex1 != -1:
+                rightIndex1 = i
+            if bin_frame[centreY2][i] == 0 and leftIndex2 == -1:
+                leftIndex2 = i
+            elif bin_frame[centreY2][i] == 0 and leftIndex2 != -1:
+                rightIndex2 = i
         
-        roadCentreX = -1
-        if leftIndex != -1 and rightIndex != -1:
-            roadCentreX = (rightIndex + leftIndex) // 2
+        roadCentreX1 = -1
+        if leftIndex1 != -1 and rightIndex1 != -1:
+            roadCentreX1 = (rightIndex1 + leftIndex1) // 2
+
+        roadCentreX2 = -1
+        if leftIndex2 != -1 and rightIndex2 != -1:
+            roadCentreX2 = (rightIndex2 + leftIndex2) // 2
 
         # Draw circle on road and define state
         bin_divider = width / NUM_BINS
-        if roadCentreX != -1:
-            # out_frame = cv2.circle(cv_image, (roadCentreX, centreY), radius, (0, 0, 255), -1)
+        if roadCentreX1 != -1:
+            out_frame = cv2.circle(cv_image, (roadCentreX1, centreY1), radius, (0, 0, 255), -1)
             self.timeout = 0
             for i in range(NUM_BINS):
-                if roadCentreX > bin_divider * i and roadCentreX < bin_divider * (i + 1):
-                    # if i != 0:
-                    #     state[i*5 - 1] = 1
-                    # else:
-                    #     state[i] = 1
-                    state[i] = 1 
+                if roadCentreX1 > bin_divider * i and roadCentreX1 < bin_divider * (i + 1):
+                    state[0][i] = 1 
         else:
-            # out_frame = cv_image
+            out_frame = cv_image
             self.timeout += 1
+        if roadCentreX2 != -1:
+            # self.timeout = 0
+            out_frame = cv2.circle(cv_image, (roadCentreX2, centreY2), radius, (0, 0, 255), -1)
+            for i in range(NUM_BINS):
+                if roadCentreX2 > bin_divider * i and roadCentreX2 < bin_divider * (i + 1):
+                    state[1][i] = 1
+        # if roadCentreX1 == -1 and roadCentreX2 == -1:
+        #     out_frame = cv_image
+        #     self.timeout += 1
 
         # Check if the line has been lost for too long
-        if self.timeout > 30:
+        if self.timeout > 20:
             done = True
         
         ## draw rectangular dividers on output frame
         # for i in range(NUM_BINS):
         #     out_frame = cv2.line(out_frame, (int(bin_divider * (i + 1)), 0), (int(bin_divider * (i + 1)), height), (0, 0, 0), 2)
         
-        # # draw state on output frame
-        # cv2.putText(out_frame, str(state), (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        # draw state on output frame
+        cv2.putText(out_frame, str(state[1]), (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        cv2.putText(out_frame, str(state[0]), (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-        # cv2.imshow("output", out_frame)
-        # cv2.waitKey(0)
+        cv2.imshow("output", out_frame)
+        cv2.waitKey(1)
 
         return state, done
 
@@ -160,6 +179,12 @@ class Gazebo_Linefollow_Env(gazebo_env.GazeboEnv):
         elif action == 2:  # RIGHT
             vel_cmd.linear.x = 0.0
             vel_cmd.angular.z = -0.5
+        elif action == 3: # HARD LEFT
+            vel_cmd.linear.x = 0.0
+            vel_cmd.angular.z = 1.0
+        elif action == 4: # HARD RIGHT
+            vel_cmd.linear.x = 0.0
+            vel_cmd.angular.z = -1.0
 
         self.vel_pub.publish(vel_cmd)
 
@@ -183,13 +208,24 @@ class Gazebo_Linefollow_Env(gazebo_env.GazeboEnv):
         # Set the rewards for your action
         if not done:
             if action == 0:  # FORWARD
-                reward = 4
+                reward = 3
+                # print("Action: Forward, Reward: {}".format(reward))
             elif action == 1:  # LEFT
                 reward = 2
-            else:
-                reward = 2  # RIGHT
+                # print("Action: Left, Reward: {}".format(reward))
+            elif action == 2: # RIGHT
+                reward = 2  
+                # print("Action: Right, Reward: {}".format(reward))
+            elif action == 3: # HARD LEFT
+                reward = 1 
+                # print("Action: Hard Left, Reward: {}".format(reward))
+            elif action == 4: # HARD RIGHT
+                reward = 1 
+                # print("Action: Hard Right, Reward: {}".format(reward))
         else:
             reward = -200
+
+        # print("Action: {}, Reward: {}".format(action, reward))
 
         return state, reward, done, {}
 

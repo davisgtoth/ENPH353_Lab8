@@ -2,6 +2,7 @@ import random
 import pickle
 import csv
 import numpy as np
+import os
 
 
 class QLearn:
@@ -19,7 +20,11 @@ class QLearn:
         
         # TODO: Implement loading Q values from pickle file.
 
-        with open(filename+".pickle", 'rb') as f:
+        home_directory = os.path.expanduser("~")
+        # folder_directory = os.path.join(home_directory, "enph353_gym-gazebo-noetic/examples/gazebo_linefollow_ex")
+        pickle_file_name = os.path.join(home_directory, filename+".pickle")
+
+        with open(pickle_file_name, 'rb') as f:
             loaded_q = pickle.load(f)
 
         self.q.update(loaded_q)
