@@ -105,6 +105,10 @@ def iterate_batches(env, net, batch_size):
         
         # Sample the probability distribution the NN predicted to choose
         # which action to take next.
+        
+        # choice takes len(act_probs) meaning it will randomly choose between 
+        # the elements of the list [0, 1] (i.e. between 0 and 1, the two actions)
+        # with the probabilities of choosing either given by the act_probs list.
         action = np.random.choice(len(act_probs), p=act_probs)
 
         # Run one simulation step using the action we sampled.
@@ -169,7 +173,7 @@ def filter_batch(batch, percentile):
     
     # Calculate the mean of the reward for all the episodes in the batch. We
     # use this as an indicator for how well the training is progressing. We 
-    # hope the mean reward will trand higher as training progresses.
+    # hope the mean reward will trend higher as training progresses.
     reward_mean = float(np.mean(rewards))
     
     # We will accumulate the observations and actions we want to train on in 
@@ -218,23 +222,29 @@ if __name__ == '__main__':
     # episodes in the top 30% and we train our NN on them.
     for iter_no, batch in enumerate(iterate_batches(env, net, BATCH_SIZE)):
         # Identify the episodes that are in the top PERCENTILE of the batch
-        obs_v, acts_v, reward_b, reward_m = #TODO identify the episode in top PERCENTILE
+        #TODO identify the episode in top PERCENTILE
+        obs_v, acts_v, reward_b, reward_m = filter_batch(batch, PERCENTILE)
 
         # Prepare for training the NN by zeroing the acumulated gradients.
         # TODO: zero gradients
+        optimizer.zero_grad()
 
         # Calculate the predicted probabilities for each action in the best 
         # episodes
-        action_scores_v = #TODO forward pass on each observation
+        #TODO forward pass on each observation
+        action_scores_v = net(obs_v)
 
         # Calculate the cross entropy loss between the predicted actions and 
         # the actual actions
-        loss_v = #TODO calculate loss
+        #TODO calculate loss
+        loss_v = objective(action_scores_v, acts_v)
 
         # Train the NN: calculate the gradients using and then adjust the 
         # weights based on the gradients
         #TODO backward pass
+        loss_v.backward()
         #TODO adjust gradients
+        optimizer.step()
 
         # Display summary of current batch
         print("%d: loss=%.3f, reward_mean=%.1f, reward_bound=%.1f" % (

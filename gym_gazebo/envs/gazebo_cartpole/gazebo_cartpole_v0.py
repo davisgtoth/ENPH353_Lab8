@@ -85,9 +85,9 @@ class GazeboCartPolev0Env(gazebo_env.GazeboEnv):
 
         # Take action
         if action > 0.5:
-            self.current_vel += 0.2
+            self.current_vel += 0.2 # action corresponding to 1
         else:
-            self.current_vel += -0.2
+            self.current_vel += -0.2 # action corresponding to 0
 
         action_msg = Float64()
         action_msg.data = self.current_vel
